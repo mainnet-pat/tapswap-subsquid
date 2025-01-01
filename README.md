@@ -44,4 +44,11 @@ npx tsc && node -r dotenv/config lib/main.js
 
 
 npx squid-graphql-server
+
+
+# dump current db state
+docker compose exec db pg_dump -d postgresql://postgres:postgres@localhost:5432/postgres > dump.sql
+
+# restore the dump into fresh database with no migrations applied
+cat dump.sql | docker compose exec -T db psql -d postgresql://postgres:postgres@localhost:5432/postgres
 ```
