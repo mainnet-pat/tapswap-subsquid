@@ -1,0 +1,70 @@
+type OpenOffer @entity {
+  id: ID!
+
+  hasSats: BigInt!
+  hasTokenCommitment: String
+  hasTokenCapability: String
+  hasTokenAmount: BigInt
+  hasTokenId: String @index
+
+  wantSats: BigInt!
+  wantTokenCommitment: String
+  wantTokenCapability: String
+  wantTokenAmount: BigInt
+  wantTokenId: String @index
+
+  fee: BigInt!
+  makerAddress: String! @index
+  contractUtxo: String! @index
+  timestamp: Int!
+}
+
+type TakenOffer @entity {
+  id: ID!
+
+  hasSats: BigInt!
+  hasTokenCommitment: String
+  hasTokenCapability: String
+  hasTokenAmount: BigInt
+  hasTokenId: String @index
+
+  wantSats: BigInt!
+  wantTokenCommitment: String
+  wantTokenCapability: String
+  wantTokenAmount: BigInt
+  wantTokenId: String @index
+
+  fee: BigInt!
+  makerAddress: String! @index
+  contractUtxo: String! @index
+  timestamp: Int!
+
+  # above fields are same as in OpenOffer
+
+  takerAddress: String!
+  spendingTx: String!
+}
+
+type CancelledOffer @entity {
+  id: ID!
+
+  hasSats: BigInt!
+  hasTokenCommitment: String
+  hasTokenCapability: String
+  hasTokenAmount: BigInt
+  hasTokenId: String @index
+
+  wantSats: BigInt!
+  wantTokenCommitment: String
+  wantTokenCapability: String
+  wantTokenAmount: BigInt
+  wantTokenId: String @index
+
+  fee: BigInt!
+  makerAddress: String! @index
+  contractUtxo: String! @index
+  timestamp: Int!
+
+  # above fields are same as in OpenOffer
+  spendingTx: String!
+}

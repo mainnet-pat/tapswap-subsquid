@@ -1,0 +1,27 @@
+manifestVersion: subsquid.io/v0.1
+name: tapswap-cash
+version: 1
+description: TapSwap indexer
+build: 
+deploy:
+  addons:
+    postgres: 
+    # rpc: 
+  processor:
+    cmd:
+      - sqd
+      - process:prod
+  api:
+    cmd:
+      - sqd
+      - serve:prod
+scale:
+  dedicated: false
+  addons:
+    postgres:
+      profile: small
+  processor:
+    profile: small
+  api:
+    profile: small
+    replicas: 1
