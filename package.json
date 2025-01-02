@@ -19,17 +19,17 @@
   "main": "lib/index.js",
   "dependencies": {
     "@bitauth/libauth": "^3.0.0",
-    "@subsquid/bch-processor": "https://gitpkg.vercel.app/mainnet-pat/squid-sdk/bch/bch-processor?bch_lib",
+    "@subsquid/bch-processor": "https://gitpkg.vercel.app/mainnet-pat/squid-sdk/bch/bch-processor?bch_lib2",
     "@subsquid/graphql-server": "^4.6.0",
-    "@subsquid/openreader": "https://gitpkg.vercel.app/mainnet-pat/squid-sdk/graphql/openreader?bch_lib",
+    "@subsquid/openreader": "https://gitpkg.vercel.app/mainnet-pat/squid-sdk/graphql/openreader?bch_lib2",
     "@subsquid/rpc-client": "^4.11.0",
-    "@subsquid/typeorm-config": "https://gitpkg.vercel.app/mainnet-pat/squid-sdk/typeorm/typeorm-config?bch_lib",
-    "@subsquid/typeorm-migration": "https://gitpkg.vercel.app/mainnet-pat/squid-sdk/typeorm/typeorm-migration?bch_lib",
-    "@subsquid/typeorm-store": "https://gitpkg.vercel.app/mainnet-pat/squid-sdk/typeorm/typeorm-store?bch_lib",
+    "@subsquid/typeorm-config": "https://gitpkg.vercel.app/mainnet-pat/squid-sdk/typeorm/typeorm-config?bch_lib2",
+    "@subsquid/typeorm-migration": "https://gitpkg.vercel.app/mainnet-pat/squid-sdk/typeorm/typeorm-migration?bch_lib2",
+    "@subsquid/typeorm-store": "https://gitpkg.vercel.app/mainnet-pat/squid-sdk/typeorm/typeorm-store?bch_lib2",
     "@subsquid/util-internal": "^3.2.0",
     "@subsquid/util-internal-archive-client": "^0.1.2",
     "@subsquid/util-internal-ingest-tools": "^1.1.4",
-    "@subsquid/util-internal-processor-tools": "https://gitpkg.vercel.app/mainnet-pat/squid-sdk/util/util-internal-processor-tools?bch_lib",
+    "@subsquid/util-internal-processor-tools": "https://gitpkg.vercel.app/mainnet-pat/squid-sdk/util/util-internal-processor-tools?bch_lib2",
     "@subsquid/util-internal-range": "^0.3.0",
     "@subsquid/util-internal-validation": "^0.7.0",
     "@subsquid/util-timeout": "^2.3.2",
@@ -40,7 +40,7 @@
     "typeorm": "^0.3.20"
   },
   "devDependencies": {
-    "@subsquid/typeorm-codegen": "https://gitpkg.vercel.app/mainnet-pat/squid-sdk/typeorm/typeorm-codegen?bch_lib",
+    "@subsquid/typeorm-codegen": "https://gitpkg.vercel.app/mainnet-pat/squid-sdk/typeorm/typeorm-codegen?bch_lib2",
     "@types/node": "^20.14.8",
     "ts-node": "^10.9.2",
     "typescript": "~5.5.2"
