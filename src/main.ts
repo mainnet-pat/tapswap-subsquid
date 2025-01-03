@@ -254,6 +254,7 @@ processor.run(db, async (ctx) => {
         offer.timestamp = Math.floor(block.header.timestamp / 1000);
 
         offer.id = offer.contractUtxo;
+        offer.txIndex = tx.transactionIndex;
 
         newOffers.push(offer);
       }

@@ -1,5 +1,6 @@
 type OpenOffer @entity {
   id: ID!
+  txIndex: Int!
 
   hasSats: BigInt!
   hasTokenCommitment: String
@@ -21,6 +22,7 @@ type OpenOffer @entity {
 
 type TakenOffer @entity {
   id: ID!
+  txIndex: Int!
 
   hasSats: BigInt!
   hasTokenCommitment: String
@@ -47,6 +49,7 @@ type TakenOffer @entity {
 
 type CancelledOffer @entity {
   id: ID!
+  txIndex: Int!
 
   hasSats: BigInt!
   hasTokenCommitment: String

@@ -1,4 +1,4 @@
-import {Entity as Entity_, Column as Column_, PrimaryColumn as PrimaryColumn_, BigIntColumn as BigIntColumn_, StringColumn as StringColumn_, Index as Index_, IntColumn as IntColumn_} from "@subsquid/typeorm-store"
+import {Entity as Entity_, Column as Column_, PrimaryColumn as PrimaryColumn_, IntColumn as IntColumn_, BigIntColumn as BigIntColumn_, StringColumn as StringColumn_, Index as Index_} from "@subsquid/typeorm-store"
 
 @Entity_()
 export class TakenOffer {
@@ -8,6 +8,9 @@ export class TakenOffer {
 
     @PrimaryColumn_()
     id!: string
+
+    @IntColumn_({nullable: false})
+    txIndex!: number
 
     @BigIntColumn_({nullable: false})
     hasSats!: bigint
