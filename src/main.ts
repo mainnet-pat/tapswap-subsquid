@@ -33,7 +33,7 @@ const processor = new BchBatchProcessor()
   // // //   - make direct RPC queries to get extra data during indexing
   // // //   - sync a squid without a gateway (slow)
   .setRpcEndpoint("wss://electrum.imaginary.cash:50004")
-  // .setP2pEndpoint("8.209.67.170:8363")
+  .setP2pEndpoint("3.228.193.128:8333")
   // .setRpcEndpoint("http://localhost:8000")
   // The processor needs to know how many newest blocks it should mark as "hot".
   // If it detects a blockchain fork, it will roll back any changes to the
@@ -280,7 +280,7 @@ processor.run(db, async (ctx) => {
     if (candidate.takerAddress === offer.makerAddress) {
       const cancelledOffer = new CancelledOffer({
         ...offer,
-        timestamp: candidate.timestamp,
+        timestamp: Math.floor(candidate.timestamp / 1000),
         spendingTx: candidate.txid,
       })
       return {
@@ -290,7 +290,7 @@ processor.run(db, async (ctx) => {
     } else {
       const takenOffer = new TakenOffer({
         ...offer,
-        timestamp: candidate.timestamp,
+        timestamp: Math.floor(candidate.timestamp / 1000),
         spendingTx: candidate.txid,
         takerAddress: candidate.takerAddress,
       })
