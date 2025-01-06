@@ -17,7 +17,9 @@ import { TypeormDatabase } from "@subsquid/typeorm-store";
 import { assertSuccess, binToNumberUint16LE, binToUtf8, binToHex, hexToBin, vmNumberToBigInt, NonFungibleTokenCapability, CashAddressNetworkPrefix, CashAddressType, encodeCashAddress, hash160, lockingBytecodeToAddressContents, sha256 } from '@bitauth/libauth';
 import { CancelledOffer, OpenOffer, TakenOffer } from './model/index.js';
 import { In } from 'typeorm';
-import { RpcBlock } from '@subsquid/bch-processor/lib/ds-rpc/rpc-data.js';
+
+const RPC_ENDPOINT = process.env.RPC_ENDPOINT ?? "wss://electrum.imaginary.cash:50004";
+const P2P_ENDPOINT = process.env.P2P_ENDPOINT ?? "3.228.193.128:8333";
 
 const BLOCK_FROM = 794520;
 const BLOCK_TO = undefined; // 792775
@@ -32,8 +34,8 @@ const processor = new BchBatchProcessor()
   // // // (including unfinalized blocks) in real time. It can also be used to
   // // //   - make direct RPC queries to get extra data during indexing
   // // //   - sync a squid without a gateway (slow)
-  .setRpcEndpoint("wss://electrum.imaginary.cash:50004")
-  .setP2pEndpoint("3.228.193.128:8333")
+  .setRpcEndpoint(RPC_ENDPOINT)
+  .setP2pEndpoint(P2P_ENDPOINT)
   // .setRpcEndpoint("http://localhost:8000")
   // The processor needs to know how many newest blocks it should mark as "hot".
   // If it detects a blockchain fork, it will roll back any changes to the
@@ -141,30 +143,6 @@ function* chunks<T>(arr: Array<T>, n: number = 10000): Generator<Array<T>> {
   }
 }
 
-// export interface Offer {
-//   hasSats: number,
-//   hasToken?: {
-//     commitment?: string,
-//     capability?: NonFungibleTokenCapability,
-//     amount?: number,
-//     tokenId?: string,
-//   }
-
-//   wantSats: number,
-//   wantToken?: {
-//     commitment?: string,
-//     capability?: NonFungibleTokenCapability,
-//     amount?: number,
-//     tokenId?: string,
-//   }
-
-//   fee: number,
-//   ownerAddress: string,
-//   contractUtxoId: string
-
-//   timestamp?: number
-// }
-
 const capabilityByteToStringMap: Record<string, string> = {
   "": NonFungibleTokenCapability.none,
   "01": NonFungibleTokenCapability.mutable,
@@ -172,6 +150,9 @@ const capabilityByteToStringMap: Record<string, string> = {
 }
 
 export const platformPubKeyHash = "e4da17ddbe40533c2a8638fdedf2c0997d46e953";
+
+console.log(`Using ${RPC_ENDPOINT} as rpc endpoint`);
+console.log(`Using ${P2P_ENDPOINT} as p2p endpoint`);
 
 processor.run(db, async (ctx) => {
   if (ctx.blocks.length === 0 && ctx.mempoolTransactions.length === 0) {
@@ -187,79 +168,86 @@ processor.run(db, async (ctx) => {
 
   const newOffers: OpenOffer[] = [];
 
-  for (const block of ctx.blocks) {
-    for (const chunk of chunks(block.transactions)) {
-      for (const tx of chunk) {
-        if (tx.inputs[0].unlockingBytecode.length >= 210 && tx.inputs[0].unlockingBytecode.includes("14e4da17ddbe40533c2a8638fdedf2c0997d46e953")) {
-          spendCandidatesUtxos.push({
-            utxo: `${tx.inputs[0].outpointTransactionHash}:0`,
-            takerAddress: tx.outputs.length === 4 ? tx.outputs[1].address : tx.outputs[0].address,
-            txid: tx.hash,
-            timestamp: block.header.timestamp,
-          })
+  const processTransactions = async (transactions: typeof ctx.blocks[0]["transactions"]) => {
+    for (const block of ctx.blocks) {
+      for (const chunk of chunks(block.transactions)) {
+        for (const tx of chunk) {
+          if (tx.inputs[0].unlockingBytecode.length >= 210 && tx.inputs[0].unlockingBytecode.includes("14e4da17ddbe40533c2a8638fdedf2c0997d46e953")) {
+            spendCandidatesUtxos.push({
+              utxo: `${tx.inputs[0].outpointTransactionHash}:0`,
+              takerAddress: tx.outputs.length === 4 ? tx.outputs[1].address : tx.outputs[0].address,
+              txid: tx.hash,
+              timestamp: block.header.timestamp,
+            })
+          }
+
+          // includes version check already with 0104
+          if (!tx?.outputs?.[1]?.lockingBytecode?.startsWith("6a044d505357010404")) {
+            continue;
+          }
+
+          const output = tx.outputs[1];
+
+          const offer: OpenOffer = new OpenOffer({});
+          const chunks = parseBinary(hexToBin(output.lockingBytecode));
+          if (chunks.length != 10) {
+            continue;
+          }
+
+          if (binToUtf8(chunks[0]) !== 'MPSW') {
+            continue;
+          }
+
+          if (binToHex(chunks[3]) !== platformPubKeyHash) {
+            continue;
+          }
+
+          const rawCategory = chunks[5];
+          if (rawCategory.length !== 32 && rawCategory.length !== 33 && rawCategory.length != 0) {
+            continue;
+          }
+
+          const rawCommitment = chunks[6];
+          if (rawCommitment.length > 40) {
+            continue;
+          }
+
+          offer.fee = assertSuccess(vmNumberToBigInt(chunks[9]));
+          if (offer.fee < 100_000) {
+            continue;
+          }
+
+          offer.wantSats = assertSuccess(vmNumberToBigInt(chunks[4]));
+          offer.wantTokenId = rawCategory.length === 0 ? undefined : binToHex(rawCategory.slice(0, 32));
+          offer.wantTokenCapability = rawCategory.length === 0 ? undefined : capabilityByteToStringMap[binToHex(rawCategory.slice(32, 1))] as NonFungibleTokenCapability;
+          offer.wantTokenCommitment = rawCategory.length === 0 ? undefined : binToHex(rawCommitment);
+          offer.wantTokenAmount = rawCategory.length === 0 ? undefined : assertSuccess(vmNumberToBigInt(chunks[7]));
+          offer.hasSats = output.valueSatoshis;
+
+          const contractOutput = tx.outputs[0];
+
+          offer.hasTokenId = contractOutput.token?.category == null ? undefined : contractOutput.token.category;
+          offer.hasTokenCapability = contractOutput.token?.nft?.capability == null ? undefined : contractOutput.token.nft.capability as NonFungibleTokenCapability;
+          offer.hasTokenCommitment = contractOutput.token?.nft?.commitment == null ? undefined : contractOutput.token.nft.commitment;
+          offer.hasTokenAmount = contractOutput.token?.amount == null ? undefined : contractOutput.token.amount;
+
+          offer.makerAddress = getAddress(pkhToLockingBytecode(chunks[8]));
+          offer.contractUtxo = `${tx.hash}:0`;
+          offer.timestamp = Math.floor(block.header.timestamp / 1000);
+
+          offer.id = offer.contractUtxo;
+          offer.txIndex = tx.transactionIndex;
+
+          newOffers.push(offer);
         }
-
-        // includes version check already with 0104
-        if (!tx?.outputs?.[1]?.lockingBytecode?.startsWith("6a044d505357010404")) {
-          continue;
-        }
-
-        const output = tx.outputs[1];
-
-        const offer: OpenOffer = new OpenOffer({});
-        const chunks = parseBinary(hexToBin(output.lockingBytecode));
-        if (chunks.length != 10) {
-          continue;
-        }
-
-        if (binToUtf8(chunks[0]) !== 'MPSW') {
-          continue;
-        }
-
-        if (binToHex(chunks[3]) !== platformPubKeyHash) {
-          continue;
-        }
-
-        const rawCategory = chunks[5];
-        if (rawCategory.length !== 32 && rawCategory.length !== 33 && rawCategory.length != 0) {
-          continue;
-        }
-
-        const rawCommitment = chunks[6];
-        if (rawCommitment.length > 40) {
-          continue;
-        }
-
-        offer.fee = assertSuccess(vmNumberToBigInt(chunks[9]));
-        if (offer.fee < 100_000) {
-          continue;
-        }
-
-        offer.wantSats = assertSuccess(vmNumberToBigInt(chunks[4]));
-        offer.wantTokenId = rawCategory.length === 0 ? undefined : binToHex(rawCategory.slice(0, 32));
-        offer.wantTokenCapability = rawCategory.length === 0 ? undefined : capabilityByteToStringMap[binToHex(rawCategory.slice(32, 1))] as NonFungibleTokenCapability;
-        offer.wantTokenCommitment = rawCategory.length === 0 ? undefined : binToHex(rawCommitment);
-        offer.wantTokenAmount = rawCategory.length === 0 ? undefined : assertSuccess(vmNumberToBigInt(chunks[7]));
-        offer.hasSats = output.valueSatoshis;
-
-        const contractOutput = tx.outputs[0];
-
-        offer.hasTokenId = contractOutput.token?.category == null ? undefined : contractOutput.token.category;
-        offer.hasTokenCapability = contractOutput.token?.nft?.capability == null ? undefined : contractOutput.token.nft.capability as NonFungibleTokenCapability;
-        offer.hasTokenCommitment = contractOutput.token?.nft?.commitment == null ? undefined : contractOutput.token.nft.commitment;
-        offer.hasTokenAmount = contractOutput.token?.amount == null ? undefined : contractOutput.token.amount;
-
-        offer.makerAddress = getAddress(pkhToLockingBytecode(chunks[8]));
-        offer.contractUtxo = `${tx.hash}:0`;
-        offer.timestamp = Math.floor(block.header.timestamp / 1000);
-
-        offer.id = offer.contractUtxo;
-        offer.txIndex = tx.transactionIndex;
-
-        newOffers.push(offer);
       }
     }
   }
+
+  for (const block of ctx.blocks) {
+    await processTransactions(block.transactions);
+  }
+  await processTransactions(ctx.mempoolTransactions);
 
   await ctx.store.upsert(newOffers);
 
